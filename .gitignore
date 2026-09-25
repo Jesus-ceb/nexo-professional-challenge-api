@@ -40,3 +40,5 @@ out/
 * Environmental variables
 .env
 *.log
+### Uploads ###
+uploads/

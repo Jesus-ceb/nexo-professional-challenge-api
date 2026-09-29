@@ -23,7 +23,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         auth -> auth
-                                .requestMatchers("/h2-console/**", "/users/register", "/products/**", "/categories/**", "/cities/**").permitAll()
+                                .requestMatchers("/h2-console/**", "/users/register", "/products/**", "/categories/**", "/cities/**", "/uploads/**" , "/error").permitAll()
                                 .anyRequest().authenticated()
                 ).headers(headers -> headers.frameOptions(frame -> frame.disable()));
 

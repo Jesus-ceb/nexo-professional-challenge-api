@@ -17,9 +17,11 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedHeaders("*");
     }
 
+    @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry){
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:uploads/");
+                .addResourceLocations("file:uploads/"); //sugerencia usar la propiedad 'app.upload.dir', si se cambia la carpeta no se desincroniza.
+
     }
 
 

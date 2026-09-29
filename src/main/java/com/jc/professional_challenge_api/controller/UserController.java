@@ -23,6 +23,7 @@ public class UserController {
         this.userService = userService;
     }
 
+    // Registers a new user, validates the received data, and returns the created user with HTTP status 201 (Created).
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody  UserRegisterRequest request){
         UserResponse created = userService.register(request);

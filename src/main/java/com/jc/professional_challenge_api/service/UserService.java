@@ -26,7 +26,7 @@ public class UserService {
 
         //email validation that prevents duplicates
         if (userRepository.existsByEmail(request.email())){
-            throw new IllegalStateException("Ya existe una cuenta con este correo");
+            throw new IllegalStateException("Este correo ya tiene una cuenta existente");
         }
 
         //This is where the actual entity to be stored in the database is constructed.

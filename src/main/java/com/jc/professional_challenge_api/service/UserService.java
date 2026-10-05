@@ -2,9 +2,12 @@ package com.jc.professional_challenge_api.service;
 
 import com.jc.professional_challenge_api.controller.dto.UserRegisterRequest;
 import com.jc.professional_challenge_api.controller.dto.UserResponse;
+import com.jc.professional_challenge_api.entities.Role;
 import com.jc.professional_challenge_api.entities.User;
 import com.jc.professional_challenge_api.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -12,11 +15,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class UserService implements UserDetailsService {
 
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
+
+    @Value("${app.admin.email}")
+    private String parentAdminEmail;
 
     @Autowired
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
@@ -55,6 +63,31 @@ public class UserService implements UserDetailsService {
 
     //The response is constructed using only the fields we want to expose to the client (never the password).
     public UserResponse toResponse(User user) {
-        return new UserResponse(user.getId(), user.getName(), user.getLastName(), user.getEmail());
+        return new UserResponse(user.getId(), user.getName(), user.getLastName(), user.getEmail(), user.getRole());
+    }
+
+    //Returns every registered user for the admin customers table.
+    public List<UserResponse> findAll() {
+        return userRepository.findAll().stream().map(this::toResponse).toList();
+    }
+
+    //Grants or removes the ADMIN role. The parent account and the admin's own account can't lose it,
+    //so the site is never left without an administrator.
+    @Transactional
+    public UserResponse updateRole(Long id, Role role, User currentUser) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("No existe un usuario con id: " + id));
+
+        if (role != Role.ADMIN) {
+            if (user.getEmail().equals(parentAdminEmail)) {
+                throw new IllegalStateException("La cuenta principal no puede perder el rol de administrador");
+            }
+            if (user.getId().equals(currentUser.getId())) {
+                throw new IllegalStateException("No puedes quitarte tu propio rol de administrador");
+            }
+        }
+
+        user.setRole(role);
+        return toResponse(userRepository.save(user));
     }
 }

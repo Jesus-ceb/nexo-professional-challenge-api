@@ -4,6 +4,7 @@ import com.jc.professional_challenge_api.security.JwtAuthenticationFilter;
 import com.jc.professional_challenge_api.service.JwtService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
@@ -48,7 +49,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(
                         auth -> auth
-                                .requestMatchers("/h2-console/**", "/users/register", "/auth/login", "/products/**", "/categories/**", "/cities/**", "/uploads/**" , "/error").permitAll()
+                                .requestMatchers("/h2-console/**", "/users/register", "/auth/login", "/uploads/**", "/error").permitAll()
+                                // The public site only reads the catalog.
+                                .requestMatchers(HttpMethod.GET, "/products/**", "/categories/**", "/cities/**").permitAll()
+                                // Any logged-in user can read their own data.
+                                .requestMatchers("/users/me").authenticated()
+                                // Everything else on these resources is administrative: USER gets 403.
+                                .requestMatchers("/users/**", "/products/**", "/categories/**", "/cities/**").hasRole("ADMIN")
                                 .anyRequest().authenticated()
                 )
                 // Missing or invalid token -> 401, so the frontend knows the session is gone.

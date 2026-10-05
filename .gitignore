@@ -42,3 +42,6 @@ out/
 *.log
 ### Uploads ###
 uploads/
+
+### Graphify ###
+graphify-out/

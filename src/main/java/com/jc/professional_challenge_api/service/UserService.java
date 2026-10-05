@@ -5,12 +5,15 @@ import com.jc.professional_challenge_api.controller.dto.UserResponse;
 import com.jc.professional_challenge_api.entities.User;
 import com.jc.professional_challenge_api.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class UserService {
+public class UserService implements UserDetailsService {
 
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
@@ -40,7 +43,18 @@ public class UserService {
         //Saves the user to the database.
         User saved = userRepository.save(user);
 
-        //The response is constructed using only the fields we want to expose to the client.
-        return new UserResponse(saved.getId(), saved.getName(), saved.getLastName(), saved.getEmail());
+        return toResponse(saved);
+    }
+
+    //Used by Spring Security during login and by the JWT filter to load the user by email.
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("No existe un usuario con el correo: " + email));
+    }
+
+    //The response is constructed using only the fields we want to expose to the client (never the password).
+    public UserResponse toResponse(User user) {
+        return new UserResponse(user.getId(), user.getName(), user.getLastName(), user.getEmail());
     }
 }

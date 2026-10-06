@@ -45,3 +45,5 @@ uploads/
 
 ### Graphify ###
 graphify-out/
+
+.DS_Store

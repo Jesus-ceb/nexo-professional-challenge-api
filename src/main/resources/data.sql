@@ -28,3 +28,13 @@ INSERT INTO cities (city) VALUES ('Montería');
 INSERT INTO cities (city) VALUES ('Valledupar');
 INSERT INTO cities (city) VALUES ('Tunja');
 INSERT INTO cities (city) VALUES ('Sincelejo');
+
+--Features (icon = Remix Icon class)
+INSERT INTO features (name, icon) VALUES ('Wifi', 'ri-wifi-line');
+INSERT INTO features (name, icon) VALUES ('Parqueadero', 'ri-parking-box-line');
+INSERT INTO features (name, icon) VALUES ('Aire acondicionado', 'ri-temp-cold-line');
+INSERT INTO features (name, icon) VALUES ('Cocina', 'ri-restaurant-line');
+INSERT INTO features (name, icon) VALUES ('Televisor', 'ri-tv-line');
+INSERT INTO features (name, icon) VALUES ('Piscina', 'ri-drop-line');
+INSERT INTO features (name, icon) VALUES ('Desayuno incluido', 'ri-cup-line');
+INSERT INTO features (name, icon) VALUES ('Admite mascotas', 'ri-bear-smile-line');

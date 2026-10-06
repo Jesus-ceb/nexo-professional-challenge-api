@@ -2,10 +2,12 @@ package com.jc.professional_challenge_api.service;
 
 import com.jc.professional_challenge_api.entities.Category;
 import com.jc.professional_challenge_api.entities.City;
+import com.jc.professional_challenge_api.entities.Feature;
 import com.jc.professional_challenge_api.entities.Product;
 import com.jc.professional_challenge_api.entities.ProductImage;
 import com.jc.professional_challenge_api.repository.CategoryRepository;
 import com.jc.professional_challenge_api.repository.CityRepository;
+import com.jc.professional_challenge_api.repository.FeatureRepository;
 import com.jc.professional_challenge_api.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +20,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductService {
@@ -26,12 +31,28 @@ public class ProductService {
     private ProductRepository productRepository;
     private CategoryRepository categoryRepository;
     private CityRepository cityRepository;
+    private FeatureRepository featureRepository;
 
     @Autowired
-    public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository, CityRepository cityRepository) {
+    public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository, CityRepository cityRepository,
+                          FeatureRepository featureRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.cityRepository = cityRepository;
+        this.featureRepository = featureRepository;
+    }
+
+    //The client sends features as [{ "id": 1 }, { "id": 3 }]; this loads the real ones from the database.
+    private Set<Feature> resolveFeatures(Set<Feature> requested) {
+        if (requested == null || requested.isEmpty()) return new HashSet<>();
+
+        Set<Long> ids = requested.stream().map(Feature::getId).collect(Collectors.toSet());
+        List<Feature> found = featureRepository.findAllById(ids);
+
+        if (found.size() != ids.size()) {
+            throw new EntityNotFoundException("Una o más características no existen. ");
+        }
+        return new HashSet<>(found);
     }
 
     //create product
@@ -52,6 +73,7 @@ public class ProductService {
 
         product.setCategory(category);
         product.setCity(city);
+        product.setFeatures(resolveFeatures(product.getFeatures()));
 
         return productRepository.save(product);
     }
@@ -63,6 +85,7 @@ public class ProductService {
     }
 
     //Update product
+    @Transactional
     public Product update(Long id, Product changes){
 
         Product existing = findById(id);
@@ -78,6 +101,10 @@ public class ProductService {
         existing.setCategory(category);
         existing.setCity(city);
         existing.getAddress().setDirection(changes.getAddress().getDirection());
+
+        // The edit form sends the full list of selected features: it replaces the previous ones.
+        existing.getFeatures().clear();
+        existing.getFeatures().addAll(resolveFeatures(changes.getFeatures()));
 
         return productRepository.save(existing);
     }

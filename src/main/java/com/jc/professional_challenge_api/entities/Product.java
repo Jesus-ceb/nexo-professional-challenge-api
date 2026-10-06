@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "product")
@@ -35,6 +37,13 @@ public class Product {
     @OneToMany( mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<ProductImage> images = new ArrayList<>();
+
+    // A product can have many features and a feature can belong to many products.
+    @ManyToMany
+    @JoinTable(name = "product_features",
+            joinColumns = @JoinColumn(name = "id_product"),
+            inverseJoinColumns = @JoinColumn(name = "id_feature"))
+    private Set<Feature> features = new HashSet<>();
 
     public Long getId() {
         return id;
@@ -90,5 +99,13 @@ public class Product {
 
     public void setImages(List<ProductImage> images) {
         this.images = images;
+    }
+
+    public Set<Feature> getFeatures() {
+        return features;
+    }
+
+    public void setFeatures(Set<Feature> features) {
+        this.features = features;
     }
 }

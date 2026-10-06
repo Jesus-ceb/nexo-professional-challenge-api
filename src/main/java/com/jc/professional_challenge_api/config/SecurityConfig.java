@@ -51,11 +51,11 @@ public class SecurityConfig {
                         auth -> auth
                                 .requestMatchers("/h2-console/**", "/users/register", "/auth/login", "/uploads/**", "/error").permitAll()
                                 // The public site only reads the catalog.
-                                .requestMatchers(HttpMethod.GET, "/products/**", "/categories/**", "/cities/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/products/**", "/categories/**", "/cities/**", "/features/**").permitAll()
                                 // Any logged-in user can read their own data.
                                 .requestMatchers("/users/me").authenticated()
                                 // Everything else on these resources is administrative: USER gets 403.
-                                .requestMatchers("/users/**", "/products/**", "/categories/**", "/cities/**").hasRole("ADMIN")
+                                .requestMatchers("/users/**", "/products/**", "/categories/**", "/cities/**", "/features/**").hasRole("ADMIN")
                                 .anyRequest().authenticated()
                 )
                 // Missing or invalid token -> 401, so the frontend knows the session is gone.

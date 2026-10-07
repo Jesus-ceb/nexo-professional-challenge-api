@@ -1,5 +1,6 @@
 package com.jc.professional_challenge_api.controller;
 
+import com.jc.professional_challenge_api.exception.ResendTooSoonException;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +41,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleNotFound(EntityNotFoundException ex) {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ResendTooSoonException.class)
+    public ResponseEntity<Map<String, String>> handleResendTooSoon(ResendTooSoonException ex) {
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
                 .body(Map.of("message", ex.getMessage()));
     }
 }

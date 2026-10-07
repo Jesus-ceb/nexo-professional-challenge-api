@@ -52,8 +52,8 @@ public class SecurityConfig {
                                 .requestMatchers("/h2-console/**", "/users/register", "/auth/login", "/uploads/**", "/error").permitAll()
                                 // The public site only reads the catalog.
                                 .requestMatchers(HttpMethod.GET, "/products/**", "/categories/**", "/cities/**", "/features/**").permitAll()
-                                // Any logged-in user can read their own data.
-                                .requestMatchers("/users/me").authenticated()
+                                // Any logged-in user can read their own data and resend their confirmation email.
+                                .requestMatchers("/users/me", "/users/me/**").authenticated()
                                 // Everything else on these resources is administrative: USER gets 403.
                                 .requestMatchers("/users/**", "/products/**", "/categories/**", "/cities/**", "/features/**").hasRole("ADMIN")
                                 .anyRequest().authenticated()

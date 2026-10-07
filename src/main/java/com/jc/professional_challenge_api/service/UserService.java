@@ -4,6 +4,7 @@ import com.jc.professional_challenge_api.controller.dto.UserRegisterRequest;
 import com.jc.professional_challenge_api.controller.dto.UserResponse;
 import com.jc.professional_challenge_api.entities.Role;
 import com.jc.professional_challenge_api.entities.User;
+import com.jc.professional_challenge_api.exception.ResendTooSoonException;
 import com.jc.professional_challenge_api.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,21 +16,33 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class UserService implements UserDetailsService {
 
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
+    private EmailService emailService;
 
     @Value("${app.admin.email}")
     private String parentAdminEmail;
 
+    @Value("${app.mail.resend-cooldown-seconds:60}")
+    private long resendCooldownSeconds = 60;
+
+    //Last time a confirmation email was sent to each user (in memory, so a restart resets it).
+    private final Map<Long, Instant> lastConfirmationSent = new ConcurrentHashMap<>();
+
     @Autowired
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, EmailService emailService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -51,7 +64,27 @@ public class UserService implements UserDetailsService {
         //Saves the user to the database.
         User saved = userRepository.save(user);
 
+        //Confirmation email right after registering (sent in the background).
+        sendConfirmation(saved);
+
         return toResponse(saved);
+    }
+
+    //Sends the confirmation email again, at most once per cooldown so the endpoint can't be used to spam.
+    public void resendConfirmation(User user) {
+        Instant last = lastConfirmationSent.get(user.getId());
+        if (last != null) {
+            long elapsed = Duration.between(last, Instant.now()).toSeconds();
+            if (elapsed < resendCooldownSeconds) {
+                throw new ResendTooSoonException(resendCooldownSeconds - elapsed);
+            }
+        }
+        sendConfirmation(user);
+    }
+
+    private void sendConfirmation(User user) {
+        lastConfirmationSent.put(user.getId(), Instant.now());
+        emailService.sendRegistrationConfirmation(user);
     }
 
     //Used by Spring Security during login and by the JWT filter to load the user by email.

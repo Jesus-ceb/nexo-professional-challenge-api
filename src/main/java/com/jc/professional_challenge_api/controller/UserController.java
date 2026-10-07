@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/users")
@@ -47,6 +48,14 @@ public class UserController {
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal User user){
         return userService.toResponse(user);
+    }
+
+    // Sends the registration confirmation email again to the logged-in user. 429 if asked again too soon.
+    @PostMapping("/me/resend-confirmation")
+    public ResponseEntity<Map<String, String>> resendConfirmation(@AuthenticationPrincipal User user){
+        userService.resendConfirmation(user);
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(Map.of("message", "Te reenviamos el correo de confirmación"));
     }
 
     // Lists all registered users with their role (admin only, see SecurityConfig).

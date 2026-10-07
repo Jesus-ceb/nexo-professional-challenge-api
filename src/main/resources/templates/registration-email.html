@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmación de registro</title>
+</head>
+<body style="margin:0; padding:0; background-color:#F0F7ED; font-family:Arial, Helvetica, sans-serif; color:#334155;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F0F7ED; padding:24px 12px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; background-color:#ffffff; border-radius:8px; overflow:hidden;">
+
+                    <!-- header -->
+                    <tr>
+                        <td style="background-color:#5D9C42; padding:20px 24px; color:#ffffff; font-size:22px; font-weight:bold;">
+                            Nexo · Siéntete en tu hogar
+                        </td>
+                    </tr>
+
+                    <!-- message -->
+                    <tr>
+                        <td style="padding:28px 24px 8px 24px;">
+                            <h1 style="margin:0 0 12px 0; font-size:22px; color:#5D9C42;">¡Hola {{name}}!</h1>
+                            <p style="margin:0; font-size:15px; line-height:1.5;">
+                                Tu registro fue <strong>exitoso</strong>. Tu cuenta ya está creada y puedes empezar a buscar tu próximo alojamiento.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- account data -->
+                    <tr>
+                        <td style="padding:16px 24px;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F0F7ED; border-radius:6px;">
+                                <tr>
+                                    <td style="padding:14px 16px; font-size:14px; line-height:1.7;">
+                                        <strong style="color:#5D9C42;">Datos de tu cuenta</strong><br>
+                                        <strong>Nombre:</strong> {{fullName}}<br>
+                                        <strong>Correo:</strong> {{email}}
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="margin:10px 0 0 0; font-size:13px; color:#64748b;">
+                                Revisa que tus datos sean correctos.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- login button -->
+                    <tr>
+                        <td align="center" style="padding:12px 24px 28px 24px;">
+                            <a href="{{loginUrl}}" style="display:inline-block; background-color:#5D9C42; color:#ffffff; text-decoration:none; font-weight:bold; font-size:15px; padding:12px 32px; border-radius:6px;">
+                                Iniciar sesión
+                            </a>
+                        </td>
+                    </tr>
+
+                    <!-- footer -->
+                    <tr>
+                        <td style="padding:16px 24px; border-top:1px solid #e2e8f0; font-size:12px; color:#94a3b8;">
+                            Si no creaste esta cuenta, puedes ignorar este correo.
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

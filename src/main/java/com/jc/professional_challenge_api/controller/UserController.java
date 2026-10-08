@@ -34,14 +34,9 @@ public class UserController {
 
     // Registers a new user, validates the received data, and returns the created user with HTTP status 201 (Created).
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody  UserRegisterRequest request){
-        try {
-            UserResponse created = userService.register(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(created);
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-        }
-
+    public ResponseEntity<UserResponse> register(@Valid @RequestBody  UserRegisterRequest request){
+        UserResponse created = userService.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     // Returns the personal data of the logged-in user (requires "Authorization: Bearer <token>").
@@ -66,13 +61,9 @@ public class UserController {
 
     // Grants or removes the ADMIN role (admin only). 409 if it would remove the parent or own admin role.
     @PatchMapping("/{id}/role")
-    public ResponseEntity<?> updateRole(@PathVariable Long id, @Valid @RequestBody UserRoleRequest request,
-                                        @AuthenticationPrincipal User currentUser){
-        try {
-            return ResponseEntity.ok(userService.updateRole(id, request.role(), currentUser));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-        }
+    public UserResponse updateRole(@PathVariable Long id, @Valid @RequestBody UserRoleRequest request,
+                                   @AuthenticationPrincipal User currentUser){
+        return userService.updateRole(id, request.role(), currentUser);
     }
 
 

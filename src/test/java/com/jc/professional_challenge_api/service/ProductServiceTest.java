@@ -1,13 +1,15 @@
 package com.jc.professional_challenge_api.service;
 
+import com.jc.professional_challenge_api.controller.dto.ProductRequest;
 import com.jc.professional_challenge_api.entities.Address;
 import com.jc.professional_challenge_api.entities.Category;
 import com.jc.professional_challenge_api.entities.City;
 import com.jc.professional_challenge_api.entities.Product;
+import com.jc.professional_challenge_api.entities.ProductImage;
+import com.jc.professional_challenge_api.exception.DuplicateResourceException;
 import com.jc.professional_challenge_api.repository.CategoryRepository;
 import com.jc.professional_challenge_api.repository.CityRepository;
 import com.jc.professional_challenge_api.repository.ProductRepository;
-import org.aspectj.lang.annotation.Before;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,6 +45,7 @@ class ProductServiceTest {
     private Product product;
     private Category category;
     private City city;
+    private ProductRequest request;
 
     //It is executed BEFORE each @Test, to configure everything before the test
     @BeforeEach
@@ -62,6 +65,9 @@ class ProductServiceTest {
         product.setCategory(category);
         product.setCity(city);
 
+        // Body that the client sends to create / update
+        request = new ProductRequest("Hotel Marriot", "Hotel en el centro", 1L, 1L, "Carrera 10 #20-30", null);
+
     }
 
     @Test
@@ -75,7 +81,7 @@ class ProductServiceTest {
 
 
         // Act: ejecutamos el metodo real que queremos probar
-        Product result = productService.create(product);
+        Product result = productService.create(request);
 
         // Assert: We verify that the result is as expected.
         assertNotNull(result);
@@ -91,9 +97,9 @@ class ProductServiceTest {
         when(productRepository.existsByNameIgnoreCase("Hotel Marriot")).thenReturn(true);
 
         // Act + Assert
-        IllegalStateException exception = assertThrows(
-                IllegalStateException.class,
-                () -> productService.create(product)
+        DuplicateResourceException exception = assertThrows(
+                DuplicateResourceException.class,
+                () -> productService.create(request)
         );
 
         assertEquals("Ya existe un producto con el nombre: Hotel Marriot", exception.getMessage());
@@ -124,14 +130,7 @@ class ProductServiceTest {
         when(productRepository.save(any(Product.class))).thenReturn(product);
 
         // "changes" that come from the customer
-        Product changes = new Product();
-        changes.setName("Hotel Marriot Renovado");
-        changes.setDescription("Nueva descripcion");
-        changes.setCategory(category);
-        changes.setCity(city);
-        Address address = new Address();
-        address.setDirection("Nueva direccion");
-        changes.setAddress(address);
+        ProductRequest changes = new ProductRequest("Hotel Marriot Renovado", "Nueva descripcion", 1L, 1L, "Nueva direccion", null);
 
         // The "existing" product also needs an Address to avoid throwing a NullPointerException
         Address existingAddress = new Address();
@@ -143,21 +142,53 @@ class ProductServiceTest {
 
         // Assert
         assertNotNull(result);
+        assertEquals("Hotel Marriot Renovado", product.getName());
+        assertEquals("Nueva direccion", product.getAddress().getDirection());
         verify(productRepository, times(1)).save(any(Product.class));
 
 
     }
 
     @Test
+    void update_shouldThrowExceptionIfTheNameBelongsToAnotherProduct() {
+        // Arrange
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(productRepository.existsByNameIgnoreCaseAndIdNot("Hotel Hilton", 1L)).thenReturn(true);
+
+        ProductRequest changes = new ProductRequest("Hotel Hilton", "Descripcion", 1L, 1L, "Direccion", null);
+
+        // Act + Assert
+        assertThrows(DuplicateResourceException.class, () -> productService.update(1L, changes));
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void update_shouldCreateTheAddressWhenTheProductHasNone() {
+        // Arrange: existing product without address (used to throw NullPointerException)
+        product.setAddress(null);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(cityRepository.findById(1L)).thenReturn(Optional.of(city));
+        when(productRepository.save(any(Product.class))).thenReturn(product);
+
+        // Act
+        productService.update(1L, request);
+
+        // Assert
+        assertNotNull(product.getAddress());
+        assertEquals("Carrera 10 #20-30", product.getAddress().getDirection());
+    }
+
+    @Test
     void delete_shouldEliminateWhenItExists() {
 
         // Arrange
-        when(productRepository.existsById(1L)).thenReturn(true);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
 
         // Act + Assert
         productService.delete(1L);
 
-        verify(productRepository, times(1)).deleteById(1L);
+        verify(productRepository, times(1)).delete(product);
     }
 
     @Test
@@ -189,6 +220,29 @@ class ProductServiceTest {
         assertEquals("http://example.com/foto.jpg", result.getImages().get(0).getUrl());
         verify(productRepository, times(1)).save(any(Product.class));
 
+    }
+
+    @Test
+    void removeImage_shouldDeleteTheStoredFile() throws Exception {
+        // Arrange: a real file inside uploads/ linked to the product
+        java.nio.file.Path uploads = java.nio.file.Paths.get("uploads");
+        java.nio.file.Files.createDirectories(uploads);
+        java.nio.file.Path file = uploads.resolve("test_remove_image.jpg");
+        java.nio.file.Files.writeString(file, "img");
+
+        ProductImage image = new ProductImage();
+        image.setId(5L);
+        image.setUrl("http://localhost:8080/uploads/test_remove_image.jpg");
+        product.setImages(new ArrayList<>(List.of(image)));
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(productRepository.save(any(Product.class))).thenReturn(product);
+
+        // Act
+        productService.removeImage(1L, 5L);
+
+        // Assert
+        assertTrue(product.getImages().isEmpty());
+        assertFalse(java.nio.file.Files.exists(file));
     }
 
 }

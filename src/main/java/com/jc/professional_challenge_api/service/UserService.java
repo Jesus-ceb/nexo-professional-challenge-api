@@ -6,7 +6,9 @@ import com.jc.professional_challenge_api.entities.Role;
 import com.jc.professional_challenge_api.entities.User;
 import com.jc.professional_challenge_api.exception.ResendTooSoonException;
 import com.jc.professional_challenge_api.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
+import com.jc.professional_challenge_api.exception.BusinessRuleException;
+import com.jc.professional_challenge_api.exception.DuplicateResourceException;
+import com.jc.professional_challenge_api.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -50,7 +52,7 @@ public class UserService implements UserDetailsService {
 
         //email validation that prevents duplicates
         if (userRepository.existsByEmail(request.email())){
-            throw new IllegalStateException("Este correo ya tiene una cuenta existente");
+            throw new DuplicateResourceException("Este correo ya tiene una cuenta existente");
         }
 
         //This is where the actual entity to be stored in the database is constructed.
@@ -109,14 +111,14 @@ public class UserService implements UserDetailsService {
     @Transactional
     public UserResponse updateRole(Long id, Role role, User currentUser) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("No existe un usuario con id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("No existe un usuario con id: " + id));
 
         if (role != Role.ADMIN) {
             if (user.getEmail().equals(parentAdminEmail)) {
-                throw new IllegalStateException("La cuenta principal no puede perder el rol de administrador");
+                throw new BusinessRuleException("La cuenta principal no puede perder el rol de administrador");
             }
             if (user.getId().equals(currentUser.getId())) {
-                throw new IllegalStateException("No puedes quitarte tu propio rol de administrador");
+                throw new BusinessRuleException("No puedes quitarte tu propio rol de administrador");
             }
         }
 

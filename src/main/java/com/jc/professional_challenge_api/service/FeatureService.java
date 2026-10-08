@@ -5,7 +5,8 @@ import com.jc.professional_challenge_api.entities.Feature;
 import com.jc.professional_challenge_api.entities.Product;
 import com.jc.professional_challenge_api.repository.FeatureRepository;
 import com.jc.professional_challenge_api.repository.ProductRepository;
-import jakarta.persistence.EntityNotFoundException;
+import com.jc.professional_challenge_api.exception.DuplicateResourceException;
+import com.jc.professional_challenge_api.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,14 +29,14 @@ public class FeatureService {
 
     public Feature findById(Long id) {
         return featureRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Característica no encontrada con id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Característica no encontrada con id: " + id));
     }
 
     @Transactional
     public Feature create(FeatureRequest request) {
         String name = request.name().trim();
         if (featureRepository.existsByNameIgnoreCase(name)) {
-            throw new IllegalStateException("Ya existe una característica con el nombre: " + name);
+            throw new DuplicateResourceException("Ya existe una característica con el nombre: " + name);
         }
 
         Feature feature = new Feature();
@@ -50,7 +51,7 @@ public class FeatureService {
 
         String name = request.name().trim();
         if (featureRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
-            throw new IllegalStateException("Ya existe una característica con el nombre: " + name);
+            throw new DuplicateResourceException("Ya existe una característica con el nombre: " + name);
         }
 
         feature.setName(name);

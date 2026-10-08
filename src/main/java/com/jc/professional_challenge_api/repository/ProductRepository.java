@@ -12,6 +12,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     //method to verify existence by name
     boolean existsByNameIgnoreCase(String name);
 
+    //Same check on update: the name is taken by a product other than the one being edited.
+    boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
+
     //Products that have a given feature (used before deleting that feature).
     List<Product> findByFeatures_Id(Long featureId);
 

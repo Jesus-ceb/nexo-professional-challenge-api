@@ -2,6 +2,7 @@ package com.jc.professional_challenge_api.service;
 
 import com.jc.professional_challenge_api.controller.dto.UserRegisterRequest;
 import com.jc.professional_challenge_api.entities.User;
+import com.jc.professional_challenge_api.exception.DuplicateResourceException;
 import com.jc.professional_challenge_api.exception.ResendTooSoonException;
 import com.jc.professional_challenge_api.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,7 +58,7 @@ class UserServiceTest {
     void register_duplicatedEmail_doesNotSendEmail() {
         when(userRepository.existsByEmail("lionel@falso.com")).thenReturn(true);
 
-        assertThrows(IllegalStateException.class, () ->
+        assertThrows(DuplicateResourceException.class, () ->
                 userService.register(new UserRegisterRequest("Lionel", "Messi", "lionel@falso.com", "12345678")));
 
         verifyNoInteractions(emailService);

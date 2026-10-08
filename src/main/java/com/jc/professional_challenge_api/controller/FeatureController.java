@@ -29,22 +29,14 @@ public class FeatureController {
 
     //Create feature, 409 if the name already exists
     @PostMapping
-    public ResponseEntity<?> create(@Valid @RequestBody FeatureRequest request) {
-        try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(featureService.create(request));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-        }
+    public ResponseEntity<Feature> create(@Valid @RequestBody FeatureRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(featureService.create(request));
     }
 
     //Update feature, 409 if the new name belongs to another feature
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody FeatureRequest request) {
-        try {
-            return ResponseEntity.ok(featureService.update(id, request));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-        }
+    public Feature update(@PathVariable Long id, @Valid @RequestBody FeatureRequest request) {
+        return featureService.update(id, request);
     }
 
     //Delete feature (it is also removed from the products that had it)

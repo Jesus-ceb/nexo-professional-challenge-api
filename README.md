@@ -578,8 +578,226 @@ JSON Response
 Cliente / Frontend
 ```
 
+
+---
+
+# 🚀 Sprint 2 - Nuevas Funcionalidades (Backend)
+
+## 📋 Resumen del Sprint
+
+| Issue | Funcionalidad | Archivos principales |
+|---|---|---|
+| Registro / Login | Registro de usuarios y login | `User`, `UserRepository`, `UserService`, `UserController`, `AuthController` |
+|Identificar usuario | Autenticación con JWT y datos del usuario autenticado | `JwtService`, `JwtAuthenticationFilter`, `SecurityConfig`, `LoginRequest`, `LoginResponse`, `GlobalExceptionHandler` |
+|Identificar administrador | Roles USER / ADMIN, cuenta admin principal y gestión de roles | `Role`, `AdminSeeder`, `UserRoleRequest`, `UserResponse` |
+|Características de producto | CRUD de características y relación N:M con productos | `Feature`, `FeatureRepository`, `FeatureService`, `FeatureRequest`, `FeatureController` |
+| Confirmar registro | Correo de confirmación asíncrono y reenvío limitado | `EmailService`, `registration-email.html`, `ResendTooSoonException` |
+
+## ✨ Funcionalidades Agregadas
+
+### Usuarios y Autenticación
+- ✅ **Registro de usuarios**: Nombre, apellido, correo y contraseña (mínimo 8 caracteres), validados con Bean Validation
+- ✅ **Correo único**: 409 Conflict si el correo ya tiene una cuenta
+- ✅ **Contraseñas cifradas**: Se guardan con BCrypt, nunca en texto plano
+- ✅ **Inicio de sesión con JWT**: `POST /auth/login` devuelve un token firmado (24 h) y los datos del usuario
+- ✅ **Usuario autenticado**: `GET /users/me` devuelve los datos del dueño del token
+- ✅ **Correo de confirmación**: Al registrarse se envía un email HTML (plantilla `registration-email.html`) de forma asíncrona
+- ✅ **Reenvío de confirmación**: `POST /users/me/resend-confirmation`, limitado a una vez cada 60 s (429 Too Many Requests)
+
+### Roles y Administración
+- ✅ **Roles USER / ADMIN**: Todo usuario nuevo se registra como USER
+- ✅ **Cuenta administradora principal**: `AdminSeeder` la crea al iniciar la aplicación (configurable por variables de entorno)
+- ✅ **Gestión de roles**: Un ADMIN puede listar usuarios y dar o quitar el rol ADMIN; la cuenta principal y la propia no pueden perderlo (409)
+- ✅ **Control de acceso**: Los `GET` del catálogo son públicos; crear, editar y eliminar requieren ADMIN (401 sin token, 403 sin permisos)
+
+### Características de Alojamientos
+- ✅ **CRUD de características**: Nombre + ícono (clase de Remix Icon), con validación de nombre duplicado (409)
+- ✅ **Asociación con productos**: Relación N:M (tabla `product_features`); el producto recibe `features: [{ "id": 1 }]` y el backend resuelve las entidades reales
+- ✅ **Eliminación segura**: Al borrar una característica se quita primero de los productos que la usan
+- ✅ **Datos iniciales**: `data.sql` carga 8 características
+
+## 🏗️ Nuevos Archivos
+
+```text
+professional_challenge_api/
+├── ProfessionalChallengeApiApplication.java   # @EnableAsync (correos en segundo plano)
+├── config/
+│   ├── SecurityConfig.java     # Spring Security, JWT, CORS, reglas por rol
+│   └── AdminSeeder.java        # Crea la cuenta ADMIN principal
+├── controller/
+│   ├── FeatureController.java
+│   ├── UserController.java
+│   ├── AuthController.java
+│   ├── GlobalExceptionHandler.java
+│   └── dto/
+│       ├── FeatureRequest.java
+│       ├── UserRegisterRequest.java
+│       ├── UserResponse.java
+│       ├── UserRoleRequest.java
+│       ├── LoginRequest.java
+│       └── LoginResponse.java
+├── entities/
+│   ├── Feature.java
+│   ├── User.java
+│   └── Role.java               # enum USER / ADMIN
+├── exception/
+│   └── ResendTooSoonException.java
+├── repository/
+│   ├── FeatureRepository.java
+│   └── UserRepository.java
+├── security/
+│   └── JwtAuthenticationFilter.java
+└── service/
+    ├── FeatureService.java
+    ├── UserService.java        # Registro, roles, UserDetailsService
+    ├── JwtService.java         # Generar y validar tokens
+    └── EmailService.java       # Correo de confirmación
+resources/
+└── templates/
+    └── registration-email.html
+test/
+├── controller/AuthControllerTest.java
+└── service/UserServiceTest.java, EmailServiceTest.java, ProductServiceTest.java, CategoryServiceTest.java, CityServiceTest.java
+```
+
+**Archivos modificados**: `Product` (relación con `Feature`), `ProductRepository` (`findByFeatures_Id`), `ProductService` (resolver características), `application.properties` (JWT, admin, correo), `data.sql` (características).
+
+## 🔌 Nuevos Endpoints
+
+### Autenticación y Usuarios
+
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| `POST` | `/users/register` | Público | Registra un usuario (201 / 409) |
+| `POST` | `/auth/login` | Público | Devuelve el token JWT y el usuario (200 / 401) |
+| `GET` | `/users/me` | Autenticado | Datos del usuario del token |
+| `POST` | `/users/me/resend-confirmation` | Autenticado | Reenvía el correo de confirmación (202 / 429) |
+| `GET` | `/users` | ADMIN | Lista los usuarios con su rol |
+| `PATCH` | `/users/{id}/role` | ADMIN | Da o quita el rol ADMIN (200 / 409) |
+
+### Características
+
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| `GET` | `/features` | Público | Lista las características |
+| `POST` | `/features` | ADMIN | Crea una característica (201 / 409) |
+| `PUT` | `/features/{id}` | ADMIN | Actualiza una característica (200 / 409) |
+| `DELETE` | `/features/{id}` | ADMIN | Elimina la característica y la quita de los productos (204) |
+
+### Acceso a los endpoints existentes
+En Productos, Categorías, Ciudades e Imágenes: `GET` → Público, y `POST` / `PUT` / `PATCH` / `DELETE` → ADMIN.
+
+## 🔐 Autenticación y Seguridad
+
+### Login
+
+```http
+POST /auth/login
+Content-Type: application/json
+```
+
+```json
+{ "email": "admin@nexo.com", "password": "Admin123456" }
+```
+
+Respuesta:
+
+```json
+{
+  "token": "eyJhbGciOi...",
+  "user": { "id": 1, "name": "Administrador", "lastName": "Nexo", "email": "admin@nexo.com", "role": "ADMIN" }
+}
+```
+
+Las peticiones protegidas envían el token en el encabezado:
+
+```text
+Authorization: Bearer <token>
+```
+
+### Códigos de respuesta
+
+| Código | Cuándo |
+|---|---|
+| `401 Unauthorized` | Sin token, token inválido o credenciales incorrectas |
+| `403 Forbidden` | El usuario no tiene rol ADMIN |
+| `409 Conflict` | Dato duplicado (correo, característica) o cambio de rol no permitido |
+| `429 Too Many Requests` | Reenvío del correo antes de 60 s |
+
+`GlobalExceptionHandler` traduce las excepciones a respuestas JSON (401 por credenciales, 400 por validación, 404 por recurso inexistente, 429 por reenvío).
+
+## ⚙️ Variables de Entorno
+
+| Variable | Uso | Valor por defecto (desarrollo) |
+|---|---|---|
+| `JWT_SECRET` | Firma de tokens (mínimo 32 caracteres) | secreto de desarrollo |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Cuenta admin principal | `admin@nexo.com` / `Admin123456` |
+| `MAIL_HOST`, `MAIL_PORT` | Servidor SMTP | `sandbox.smtp.mailtrap.io`, `2525` |
+| `MAIL_USERNAME`, `MAIL_PASSWORD` | Credenciales SMTP (Mailtrap) | vacío |
+| `MAIL_FROM` | Remitente | `no-reply@nexo.com` |
+| `FRONTEND_URL` | Enlace del correo hacia el frontend | `http://localhost:5173` |
+
+## 🛠️ Nuevas Tecnologías
+
+- **Seguridad**: Spring Security + JWT (jjwt) + BCrypt
+- **Validación**: Jakarta Bean Validation
+- **Correo**: Spring Mail (Mailtrap en desarrollo) + plantillas HTML
+- **Testing**: JUnit 5 + Mockito + Spring Security Test
+
+## 🏛️ Cambios en el Modelo de Datos
+
+```text
+┌──────────┐   N:M (product_features)   ┌──────────┐
+│ Product  │◄──────────────────────────►│ Feature  │
+└──────────┘                            └──────────┘
+
+┌──────────────────────────┐
+│ User (role: USER/ADMIN)  │   independiente del catálogo
+└──────────────────────────┘
+```
+
+## 🧠 Nueva Lógica de Negocio
+
+- **Registro**: correo duplicado → 409; contraseña cifrada con BCrypt; correo de confirmación enviado de forma asíncrona.
+- **Reenvío de confirmación**: si no han pasado 60 s desde el último envío, se lanza `ResendTooSoonException` (429).
+- **Cambio de rol**: no se puede quitar el rol ADMIN a la cuenta principal ni a la propia (409).
+- **Eliminar característica**: primero se desvincula de los productos, para que la tabla intermedia no bloquee el borrado.
+
+## 🎨 Decisiones de Diseño del Sprint
+
+### 1. JWT stateless
+No hay sesión en el servidor; cada petición trae el token. Así es más fácil escalar y separar frontend y backend.
+### 2. DTOs para usuarios
+`UserResponse` evita exponer la contraseña; los records con `@Valid` validan la entrada.
+### 3. Correo asíncrono (`@Async`)
+El registro responde rápido aunque el servidor SMTP tarde.
+### 4. CORS en `SecurityConfig`
+Así Spring Security deja pasar las peticiones preflight del navegador.
+
+## 🔄 Flujo con Seguridad
+
+```text
+Cliente / Frontend
+        ↓
+HTTP Request (Authorization: Bearer <token>)
+        ↓
+JwtAuthenticationFilter (valida token y rol)
+        ↓
+Controller → Service → Repository → H2 Database
+        ↓
+JSON Response
+```
+
+## 🎯 Pendiente para el Próximo Sprint
+
+- ⏳ CRUD completo de categorías (título, descripción e imagen)
+- ⏳ Búsqueda y filtrado de productos en el servidor (por categoría, ciudad y fechas)
+- ⏳ Reservas
+- ⏳ Persistencia en una base de datos para producción
+
 ## 👨‍💻 Autor
 
 Este proyecto fue creado por:
 
 **Jesús Ceballos.**
+

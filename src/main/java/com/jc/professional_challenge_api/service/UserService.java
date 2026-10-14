@@ -2,9 +2,11 @@ package com.jc.professional_challenge_api.service;
 
 import com.jc.professional_challenge_api.controller.dto.UserRegisterRequest;
 import com.jc.professional_challenge_api.controller.dto.UserResponse;
+import com.jc.professional_challenge_api.entities.Product;
 import com.jc.professional_challenge_api.entities.Role;
 import com.jc.professional_challenge_api.entities.User;
 import com.jc.professional_challenge_api.exception.ResendTooSoonException;
+import com.jc.professional_challenge_api.repository.ProductRepository;
 import com.jc.professional_challenge_api.repository.UserRepository;
 import com.jc.professional_challenge_api.exception.BusinessRuleException;
 import com.jc.professional_challenge_api.exception.DuplicateResourceException;
@@ -30,6 +32,7 @@ public class UserService implements UserDetailsService {
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
     private EmailService emailService;
+    private ProductRepository productRepository;
 
     @Value("${app.admin.email}")
     private String parentAdminEmail;
@@ -41,10 +44,12 @@ public class UserService implements UserDetailsService {
     private final Map<Long, Instant> lastConfirmationSent = new ConcurrentHashMap<>();
 
     @Autowired
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, EmailService emailService) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, EmailService emailService,
+                       ProductRepository productRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.productRepository = productRepository;
     }
 
     @Transactional
@@ -124,5 +129,33 @@ public class UserService implements UserDetailsService {
 
         user.setRole(role);
         return toResponse(userRepository.save(user));
+    }
+
+    // ------------------ Favorites -----------------------------
+    // The user from the token is not attached to the session, so each method reloads it to read its favorites.
+
+    //Ids of the products the user marked as favorite, e.g. [1, 4, 7].
+    @Transactional(readOnly = true)
+    public List<Long> getFavoriteIds(User currentUser) {
+        return reload(currentUser).getFavorites().stream().map(Product::getId).sorted().toList();
+    }
+
+    //Marks a product as favorite; marking it twice changes nothing (it is a Set). 404 if the product doesn't exist.
+    @Transactional
+    public void addFavorite(User currentUser, Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con id: " + productId));
+        reload(currentUser).getFavorites().add(product);
+    }
+
+    //Removes a product from favorites; nothing happens if it wasn't one.
+    @Transactional
+    public void removeFavorite(User currentUser, Long productId) {
+        reload(currentUser).getFavorites().removeIf(product -> product.getId().equals(productId));
+    }
+
+    private User reload(User currentUser) {
+        return userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("No existe un usuario con id: " + currentUser.getId()));
     }
 }

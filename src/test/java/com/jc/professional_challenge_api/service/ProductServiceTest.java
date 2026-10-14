@@ -10,6 +10,7 @@ import com.jc.professional_challenge_api.exception.DuplicateResourceException;
 import com.jc.professional_challenge_api.repository.CategoryRepository;
 import com.jc.professional_challenge_api.repository.CityRepository;
 import com.jc.professional_challenge_api.repository.ProductRepository;
+import com.jc.professional_challenge_api.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +38,9 @@ class ProductServiceTest {
 
     @Mock
     private CityRepository cityRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     //creates a REAL instance of ProductService,
     @InjectMocks

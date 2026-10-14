@@ -10,10 +10,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -51,6 +53,26 @@ public class UserController {
         userService.resendConfirmation(user);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(Map.of("message", "Te reenviamos el correo de confirmación"));
+    }
+
+    // Ids of the logged-in user's favorite products, e.g. [1, 4, 7].
+    @GetMapping("/me/favorites")
+    public List<Long> getFavorites(@AuthenticationPrincipal User user){
+        return userService.getFavoriteIds(user);
+    }
+
+    // Marks a product as favorite (idempotent). 404 if the product doesn't exist.
+    @PutMapping("/me/favorites/{productId}")
+    public ResponseEntity<Void> addFavorite(@AuthenticationPrincipal User user, @PathVariable Long productId){
+        userService.addFavorite(user, productId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Removes a product from favorites.
+    @DeleteMapping("/me/favorites/{productId}")
+    public ResponseEntity<Void> removeFavorite(@AuthenticationPrincipal User user, @PathVariable Long productId){
+        userService.removeFavorite(user, productId);
+        return ResponseEntity.noContent().build();
     }
 
     // Lists all registered users with their role (admin only, see SecurityConfig).

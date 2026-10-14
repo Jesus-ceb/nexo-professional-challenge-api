@@ -6,7 +6,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -28,6 +30,17 @@ public class User implements UserDetails {
 
     @Enumerated(EnumType.STRING)
     private Role role = Role.USER;
+
+    // Products the user marked as favorite; a user can have many and a product can be favorite of many users.
+    @ManyToMany
+    @JoinTable(name = "user_favorites",
+            joinColumns = @JoinColumn(name = "id_user"),
+            inverseJoinColumns = @JoinColumn(name = "id_product"))
+    private Set<Product> favorites = new HashSet<>();
+
+    public Set<Product> getFavorites() {
+        return favorites;
+    }
 
     public Long getId() {
         return id;

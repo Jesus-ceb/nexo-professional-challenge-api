@@ -11,6 +11,7 @@ import com.jc.professional_challenge_api.repository.CategoryRepository;
 import com.jc.professional_challenge_api.repository.CityRepository;
 import com.jc.professional_challenge_api.repository.FeatureRepository;
 import com.jc.professional_challenge_api.repository.ProductRepository;
+import com.jc.professional_challenge_api.repository.UserRepository;
 import com.jc.professional_challenge_api.exception.DuplicateResourceException;
 import com.jc.professional_challenge_api.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
@@ -46,14 +47,16 @@ public class ProductService {
     private CategoryRepository categoryRepository;
     private CityRepository cityRepository;
     private FeatureRepository featureRepository;
+    private UserRepository userRepository;
 
     @Autowired
     public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository, CityRepository cityRepository,
-                          FeatureRepository featureRepository) {
+                          FeatureRepository featureRepository, UserRepository userRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.cityRepository = cityRepository;
         this.featureRepository = featureRepository;
+        this.userRepository = userRepository;
     }
 
     //The client sends the feature ids, e.g. [1, 3]; this loads the real ones from the database.
@@ -143,6 +146,9 @@ public class ProductService {
     public void delete(Long id){
         Product product = findById(id);
         List<String> imageUrls = product.getImages().stream().map(ProductImage::getUrl).toList();
+
+        //the user_favorites rows point to the product: remove it from every user's favorites first
+        userRepository.findByFavorites_Id(id).forEach(user -> user.getFavorites().remove(product));
 
         productRepository.delete(product);
 

@@ -6,12 +6,14 @@ import com.jc.professional_challenge_api.controller.dto.ProductRequest;
 import com.jc.professional_challenge_api.controller.dto.ProductResponse;
 import com.jc.professional_challenge_api.service.ProductService;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 
 // Receives ProductRequest and returns ProductResponse, never the JPA entity.
@@ -27,6 +29,20 @@ public class ProductController {
     }
 
     // ENDPOINTS
+
+    //Search products by keyword and optional date range, e.g. /products/search?q=cali&checkIn=2026-10-20&checkOut=2026-10-25
+    @GetMapping("/search")
+    public List<ProductResponse> search(@RequestParam(required = false) String q,
+                                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkIn,
+                                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut){
+        return productService.search(q, checkIn, checkOut).stream().map(ProductResponse::from).toList();
+    }
+
+    //Autocomplete suggestions for the search box, e.g. /products/suggestions?q=ca
+    @GetMapping("/suggestions")
+    public List<String> suggestions(@RequestParam(required = false) String q){
+        return productService.suggestions(q);
+    }
 
     //create product, 409 if the name already exists
     @PostMapping

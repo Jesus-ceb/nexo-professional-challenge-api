@@ -25,7 +25,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.text.Normalizer;
+import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -149,6 +153,79 @@ public class ProductService {
     //List Product
     public List<Product> findAll(){
         return productRepository.findAll();
+    }
+
+    // ------------------ Section Search -----------------------------
+
+    private static final int MAX_SUGGESTIONS = 8;
+    private static final int MIN_SUGGESTION_LENGTH = 2;
+    private static final int NO_MATCH = Integer.MAX_VALUE;
+
+    //Keyword search ignoring case and accents ("bogota" finds "Bogotá").
+    //Results ordered by where the text matches: name, city, category, description; no match is left out.
+    public List<Product> search(String text, LocalDate checkIn, LocalDate checkOut){
+        validateDates(checkIn, checkOut);
+
+        // TODO: when bookings exist, exclude products that are not available between checkIn and checkOut.
+        String term = normalize(text);
+        if (term.isEmpty()) return productRepository.findAll();
+
+        return productRepository.findAll().stream()
+                .filter(product -> relevance(product, term) < NO_MATCH)
+                .sorted(Comparator.comparingInt(product -> relevance(product, term)))
+                .toList();
+    }
+
+    //Short list of city, category and product names containing the text, for autocomplete.
+    public List<String> suggestions(String text){
+        String term = normalize(text);
+        if (term.length() < MIN_SUGGESTION_LENGTH) return List.of();
+
+        Set<String> result = new LinkedHashSet<>();
+        cityRepository.findAll().stream().map(City::getCity)
+                .filter(name -> matches(name, term)).forEach(result::add);
+        categoryRepository.findAll().stream().map(Category::getCategory)
+                .filter(name -> matches(name, term)).forEach(result::add);
+        productRepository.findAll().stream().map(Product::getName)
+                .filter(name -> matches(name, term)).forEach(result::add);
+
+        return result.stream().limit(MAX_SUGGESTIONS).toList();
+    }
+
+    //Both dates or none, check-in not in the past, check-out after check-in (answered with 400).
+    private void validateDates(LocalDate checkIn, LocalDate checkOut){
+        if (checkIn == null && checkOut == null) return;
+        if (checkIn == null || checkOut == null) {
+            throw new IllegalArgumentException("Debes indicar la fecha de llegada y la de salida.");
+        }
+        if (checkIn.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("La fecha de llegada no puede ser anterior a hoy.");
+        }
+        if (!checkOut.isAfter(checkIn)) {
+            throw new IllegalArgumentException("La fecha de salida debe ser posterior a la de llegada.");
+        }
+    }
+
+    //Lower is more relevant: 0 name, 1 city, 2 category, 3 description, NO_MATCH otherwise.
+    private int relevance(Product product, String term){
+        if (matches(product.getName(), term)) return 0;
+        if (product.getCity() != null && matches(product.getCity().getCity(), term)) return 1;
+        if (product.getCategory() != null && matches(product.getCategory().getCategory(), term)) return 2;
+        if (matches(product.getDescription(), term)) return 3;
+        return NO_MATCH;
+    }
+
+    //term must already be normalized.
+    private boolean matches(String value, String term){
+        return value != null && normalize(value).contains(term);
+    }
+
+    //Trimmed, lower case and without accents: "  Bogotá " -> "bogota".
+    private String normalize(String value){
+        if (value == null) return "";
+        return Normalizer.normalize(value.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase();
     }
 
     // ------------------ Section Images -----------------------------

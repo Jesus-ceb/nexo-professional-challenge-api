@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -243,6 +244,89 @@ class ProductServiceTest {
         // Assert
         assertTrue(product.getImages().isEmpty());
         assertFalse(java.nio.file.Files.exists(file));
+    }
+
+    // ------------------ search -----------------------------
+
+    @Test
+    void search_shouldPutNameMatchesBeforeCityMatches() {
+        // Arrange: "cali" is in the city of one product and in the name of the other
+        Product byCity = product;
+        Product byName = new Product();
+        byName.setId(2L);
+        byName.setName("Hostal Cali Viejo");
+        byName.setCategory(category);
+        City bogota = new City();
+        bogota.setCity("Bogotá");
+        byName.setCity(bogota);
+        Product noMatch = new Product();
+        noMatch.setName("Glamping El Bosque");
+        noMatch.setCity(bogota);
+        when(productRepository.findAll()).thenReturn(List.of(byCity, noMatch, byName));
+
+        // Act
+        List<Product> result = productService.search("cali", null, null);
+
+        // Assert: the product without "cali" is left out
+        assertEquals(List.of(byName, byCity), result);
+    }
+
+    @Test
+    void search_shouldIgnoreAccentsAndCase() {
+        City bogota = new City();
+        bogota.setCity("Bogotá");
+        product.setCity(bogota);
+        when(productRepository.findAll()).thenReturn(List.of(product));
+
+        assertEquals(List.of(product), productService.search("  BOGOTA ", null, null));
+    }
+
+    @Test
+    void search_withoutTextShouldReturnAllProducts() {
+        when(productRepository.findAll()).thenReturn(List.of(product));
+
+        assertEquals(List.of(product), productService.search("  ", null, null));
+    }
+
+    @Test
+    void search_shouldRejectCheckOutBeforeCheckIn() {
+        LocalDate checkIn = LocalDate.now().plusDays(5);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> productService.search("cali", checkIn, checkIn.minusDays(1)));
+    }
+
+    @Test
+    void search_shouldRejectCheckInInThePast() {
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> productService.search("cali", yesterday, yesterday.plusDays(3)));
+    }
+
+    @Test
+    void search_shouldRejectOnlyOneDate() {
+        assertThrows(IllegalArgumentException.class,
+                () -> productService.search("cali", LocalDate.now().plusDays(1), null));
+    }
+
+    @Test
+    void suggestions_shouldJoinCitiesCategoriesAndProductsWithoutDuplicates() {
+        // "Cali" is both a city and a product name; "Hotel" doesn't contain "ca"
+        when(cityRepository.findAll()).thenReturn(List.of(city));
+        when(categoryRepository.findAll()).thenReturn(List.of(category));
+        Product sameAsCity = new Product();
+        sameAsCity.setName("Cali");
+        product.setName("Casa Marriot");
+        when(productRepository.findAll()).thenReturn(List.of(sameAsCity, product));
+
+        assertEquals(List.of("Cali", "Casa Marriot"), productService.suggestions("ca"));
+    }
+
+    @Test
+    void suggestions_shouldReturnEmptyForShortText() {
+        assertTrue(productService.suggestions("c").isEmpty());
+        verifyNoInteractions(cityRepository);
     }
 
 }

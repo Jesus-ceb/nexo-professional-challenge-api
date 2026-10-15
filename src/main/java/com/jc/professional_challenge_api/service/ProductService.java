@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 public class ProductService {
@@ -221,9 +222,11 @@ public class ProductService {
         return NO_MATCH;
     }
 
-    //term must already be normalized.
+    //term must already be normalized. It must match at the start of a word: "cali" finds "Cali" or "calidad",
+    //but not "localizar"; "santa m" finds "Santa Marta".
     private boolean matches(String value, String term){
-        return value != null && normalize(value).contains(term);
+        if (value == null) return false;
+        return Pattern.compile("(^|[^a-z0-9])" + Pattern.quote(term)).matcher(normalize(value)).find();
     }
 
     //Trimmed, lower case and without accents: "  Bogotá " -> "bogota".

@@ -276,6 +276,19 @@ class ProductServiceTest {
     }
 
     @Test
+    void search_shouldOnlyMatchAtTheStartOfAWord() {
+        // "localizar" contains "cali" but is not the word Cali
+        City medellin = new City();
+        medellin.setCity("Medellín");
+        product.setCity(medellin);
+        product.setDescription("Apartamento fácil de localizar cerca del metro.");
+        when(productRepository.findAll()).thenReturn(List.of(product));
+
+        assertTrue(productService.search("cali", null, null).isEmpty());
+        assertEquals(List.of(product), productService.search("medellin", null, null));
+    }
+
+    @Test
     void search_shouldIgnoreAccentsAndCase() {
         City bogota = new City();
         bogota.setCity("Bogotá");

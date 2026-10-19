@@ -1,6 +1,7 @@
 package com.jc.professional_challenge_api.service;
 
 import com.jc.professional_challenge_api.controller.dto.UserRegisterRequest;
+import com.jc.professional_challenge_api.controller.dto.UserResponse;
 import com.jc.professional_challenge_api.entities.Product;
 import com.jc.professional_challenge_api.entities.User;
 import com.jc.professional_challenge_api.exception.DuplicateResourceException;
@@ -54,7 +55,7 @@ class UserServiceTest {
 
     @Test
     void register_sendsConfirmationEmail() {
-        when(userRepository.existsByEmail("lionel@falso.com")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase("lionel@falso.com")).thenReturn(false);
         when(passwordEncoder.encode("12345678")).thenReturn("hash");
         when(userRepository.save(any(User.class))).thenReturn(user);
 
@@ -65,12 +66,38 @@ class UserServiceTest {
 
     @Test
     void register_duplicatedEmail_doesNotSendEmail() {
-        when(userRepository.existsByEmail("lionel@falso.com")).thenReturn(true);
+        when(userRepository.existsByEmailIgnoreCase("lionel@falso.com")).thenReturn(true);
 
         assertThrows(DuplicateResourceException.class, () ->
                 userService.register(new UserRegisterRequest("Lionel", "Messi", "lionel@falso.com", "12345678")));
 
         verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void register_storesTheEmailNormalized() {
+        when(userRepository.existsByEmailIgnoreCase("juan@mail.com")).thenReturn(false);
+        when(passwordEncoder.encode("12345678")).thenReturn("hash");
+        // the database assigns the id
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User saved = invocation.getArgument(0);
+            saved.setId(2L);
+            return saved;
+        });
+
+        UserResponse created = userService.register(new UserRegisterRequest("Juan", "Perez", " Juan@Mail.com ", "12345678"));
+
+        assertEquals("juan@mail.com", created.email());
+    }
+
+    @Test
+    void register_sameEmailWithOtherCase_isDuplicated() {
+        // juan@mail.com already exists
+        when(userRepository.existsByEmailIgnoreCase("juan@mail.com")).thenReturn(true);
+
+        assertThrows(DuplicateResourceException.class, () ->
+                userService.register(new UserRegisterRequest("Juan", "Perez", "Juan@mail.com", "12345678")));
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test

@@ -36,7 +36,7 @@ class AuthControllerTest {
 
     @BeforeEach
     void registerUser() {
-        if (!userRepository.existsByEmail(EMAIL)) {
+        if (!userRepository.existsByEmailIgnoreCase(EMAIL)) {
             userService.register(new UserRegisterRequest("Jesus", "Ceballos", EMAIL, PASSWORD));
         }
     }

@@ -9,10 +9,10 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
 
     //Check for the existence of an email to avoid duplicates.
-    boolean existsByEmail(String email);
+    boolean existsByEmailIgnoreCase(String email);
 
     //Search for and retrieve the User object from the database.
-    Optional<User> findByEmail(String email);
+    Optional<User> findByEmailIgnoreCase(String email);
 
     //Users that have a given product as favorite (used before deleting that product).
     List<User> findByFavorites_Id(Long productId);

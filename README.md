@@ -795,6 +795,147 @@ JSON Response
 - ⏳ Reservas
 - ⏳ Persistencia en una base de datos para producción
 
+# 🚀 Sprint 3 - Nuevas Funcionalidades (Backend)
+
+## 📋 Resumen del Sprint
+
+| Funcionalidad | Qué se implementó | Archivos principales |
+|---|---|---|
+| Realizar búsqueda | Búsqueda por palabra clave con relevancia, sugerencias para autocompletar y validación de fechas | `ProductService`, `ProductController`, `GlobalExceptionHandler` |
+| Marcar como favorito | Agregar y quitar productos de los favoritos del usuario | `User`, `UserService`, `UserController`, `UserRepository` |
+| Listar productos favoritos | Consulta de los favoritos del usuario autenticado | `UserService`, `UserController` |
+| Puntuar producto | Reseñas con puntuación de 1 a 5, comentario y media del producto | `Review`, `ReviewRepository`, `ReviewService`, `ReviewController`, `ReviewRequest`, `ReviewResponse`, `ReviewSubmitResponse` |
+
+## ✨ Funcionalidades Agregadas
+
+### Realizar búsqueda
+- ✅ **Búsqueda por palabra clave**: Busca en el nombre, la ciudad, la categoría y la descripción de cada alojamiento
+- ✅ **Sin distinguir mayúsculas ni tildes**: "bogota" encuentra "Bogotá"
+- ✅ **Coincidencia al inicio de palabra**: "cali" encuentra "Cali" pero no "localizar"
+- ✅ **Resultados por relevancia**: Primero las coincidencias en el nombre, luego en la ciudad, la categoría y la descripción
+- ✅ **Sugerencias**: Hasta 8 nombres de ciudades, categorías y productos a partir de 2 letras, para el autocompletado
+- ✅ **Validación de fechas**: Llegada y salida juntas, llegada desde hoy y salida posterior a la llegada (400 con mensaje claro)
+
+### Marcar como favorito
+- ✅ **Agregar y quitar favoritos**: Cada usuario con sesión gestiona sus propios favoritos; marcar dos veces el mismo producto no lo duplica
+- ✅ **Eliminación segura**: Al borrar un producto se quita primero de los favoritos de todos los usuarios
+
+### Listar productos favoritos
+- ✅ **Favoritos del usuario**: `GET /users/me/favorites` devuelve los ids de los productos marcados por el dueño del token
+
+### Puntuar producto
+- ✅ **Publicar reseñas**: Puntuación de 1 a 5 y comentario opcional (hasta 1000 caracteres); un usuario puede dejar varias reseñas
+- ✅ **Leer reseñas**: Público, de la más nueva a la más antigua, con el nombre del autor ("Mario B."), sin exponer su correo
+- ✅ **Media dinámica**: Cada reseña nueva recalcula la puntuación media y el total del producto, que se devuelven con los datos de cada producto
+- ✅ **Eliminación segura**: Al borrar un producto se borran sus reseñas
+
+### Mejoras de seguridad y validación
+- ✅ **Emails sin distinguir mayúsculas**: Se guardan sin espacios y en minúsculas; el registro, el login y las comparaciones internas usan el mismo criterio, así que `Juan@mail.com` y `juan@mail.com` son la misma cuenta (409 al registrar el duplicado)
+- ✅ **Parámetros con formato inválido**: Una fecha mal escrita en la URL responde 400 en lugar de 500
+
+## 🏗️ Nuevos Archivos
+
+```text
+professional_challenge_api/
+├── controller/
+│   ├── ReviewController.java
+│   └── dto/
+│       ├── ReviewRequest.java          # { rating, comment }
+│       ├── ReviewResponse.java         # Reseña publicada
+│       └── ReviewSubmitResponse.java   # Reseña + nueva media y total del producto
+├── entities/
+│   └── Review.java
+├── repository/
+│   └── ReviewRepository.java
+└── service/
+    └── ReviewService.java
+test/
+└── service/ReviewServiceTest.java
+```
+
+**Archivos modificados**: `Product` (media, total y relación con reseñas), `ProductResponse` (`averageRating`, `reviewCount`), `ProductService` (búsqueda, sugerencias, limpieza de favoritos al borrar), `ProductController` (búsqueda y sugerencias), `User` (favoritos y normalización del email), `UserRepository`, `UserService` (favoritos y emails), `UserController` (favoritos), `SecurityConfig` (publicar reseñas), `GlobalExceptionHandler`, `AdminSeeder`, `ProductServiceTest`, `UserServiceTest`, `AuthControllerTest`.
+
+## 🔌 Nuevos Endpoints
+
+### Búsqueda
+
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| `GET` | `/products/search?q=&checkIn=&checkOut=` | Público | Busca alojamientos por palabra clave y fechas opcionales (200 / 400) |
+| `GET` | `/products/suggestions?q=` | Público | Sugerencias para autocompletar el buscador |
+
+### Favoritos
+
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| `GET` | `/users/me/favorites` | Autenticado | Ids de los productos favoritos, ej. `[1, 4, 7]` |
+| `PUT` | `/users/me/favorites/{productId}` | Autenticado | Marca un producto como favorito (204 / 404) |
+| `DELETE` | `/users/me/favorites/{productId}` | Autenticado | Quita un producto de favoritos (204) |
+
+### Reseñas
+
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| `GET` | `/products/{productId}/reviews` | Público | Reseñas del producto (200 / 404) |
+| `POST` | `/products/{productId}/reviews` | Autenticado | Publica una reseña (201 / 400 / 404) |
+
+Publicar una reseña:
+
+```json
+{ "rating": 5, "comment": "Excelentes instalaciones y muy buena ubicación" }
+```
+
+Respuesta:
+
+```json
+{
+  "review": { "id": 1, "rating": 5, "comment": "Excelentes instalaciones y muy buena ubicación", "createdAt": "2026-10-15T08:30:00", "userName": "Mario B." },
+  "averageRating": 4.5,
+  "reviewCount": 2
+}
+```
+
+Cada producto (`GET /products`, `/products/{id}`, `/products/search`) incluye ahora `averageRating` (media de 1 a 5 con 2 decimales, o `null` sin reseñas) y `reviewCount`.
+
+## 🏛️ Cambios en el Modelo de Datos
+
+```text
+┌──────────┐   N:M (user_favorites)   ┌──────────┐
+│   User   │◄────────────────────────►│ Product  │  + averageRating, reviewCount
+└──────────┘                          └──────────┘
+     ▲ 1                                    ▲ 1
+     │                                      │
+     │ N          ┌──────────────┐        N │
+     └────────────│    Review    │──────────┘
+                  │ rating 1-5   │
+                  │ comment      │
+                  │ createdAt    │
+                  └──────────────┘
+```
+
+## 🧠 Nueva Lógica de Negocio
+
+- **Búsqueda**: el texto se normaliza (sin tildes y en minúsculas) y debe coincidir al inicio de una palabra; sin texto devuelve todos los productos. Las fechas se validan, pero todavía no filtran productos porque no existen reservas.
+- **Favoritos**: se guardan como un conjunto, así que no hay duplicados; quitar un favorito que no existe no da error.
+- **Reseñas**: siempre se crea una reseña nueva; después se recalculan la media (2 decimales) y el total, y se guardan en el producto. Por ahora puede reseñar cualquier usuario con sesión; queda pendiente exigir una reserva finalizada.
+- **Emails**: se normalizan al guardarse y se buscan sin distinguir mayúsculas.
+
+## 🎨 Decisiones de Diseño del Sprint
+
+### 1. Búsqueda en memoria
+El catálogo es pequeño, así que la búsqueda filtra los productos en Java. Eso permite ignorar tildes y ordenar por relevancia sin depender de funciones de la base de datos.
+### 2. Media guardada en el producto
+`averageRating` y `reviewCount` se actualizan al publicar cada reseña. Así todas las listas los reciben sin consultas extra.
+### 3. Favoritos bajo `/users/me`
+Las rutas de favoritos reutilizan la regla de seguridad que ya protege los datos del usuario autenticado.
+### 4. Reseñas abiertas a usuarios autenticados
+`SecurityConfig` permite `POST /products/*/reviews` a cualquier usuario con sesión, antes de la regla que reserva el resto de `/products/**` para ADMIN.
+
+## 🧪 Testing
+
+pruebas con JUnit 5 y Mockito. Las nuevas cubren la búsqueda (relevancia, tildes, inicio de palabra y fechas), las sugerencias, los favoritos, las reseñas (media, varias reseñas por usuario, producto inexistente) y la normalización de emails.
+
+
 ## 👨‍💻 Autor
 
 Este proyecto fue creado por:

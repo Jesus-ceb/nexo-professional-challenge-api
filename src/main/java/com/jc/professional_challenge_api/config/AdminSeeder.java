@@ -36,7 +36,7 @@ public class AdminSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         // With a persistent database this avoids creating the account twice.
-        if (userRepository.existsByEmail(email)) return;
+        if (userRepository.existsByEmailIgnoreCase(User.normalizeEmail(email))) return;
 
         User admin = new User();
         admin.setName(name);

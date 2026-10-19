@@ -56,7 +56,7 @@ public class UserService implements UserDetailsService {
     public UserResponse register(UserRegisterRequest request){
 
         //email validation that prevents duplicates
-        if (userRepository.existsByEmail(request.email())){
+        if (userRepository.existsByEmailIgnoreCase(User.normalizeEmail(request.email()))){
             throw new DuplicateResourceException("Este correo ya tiene una cuenta existente");
         }
 
@@ -97,7 +97,7 @@ public class UserService implements UserDetailsService {
     //Used by Spring Security during login and by the JWT filter to load the user by email.
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return userRepository.findByEmail(email)
+        return userRepository.findByEmailIgnoreCase(User.normalizeEmail(email))
                 .orElseThrow(() -> new UsernameNotFoundException("No existe un usuario con el correo: " + email));
     }
 
@@ -119,7 +119,7 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new ResourceNotFoundException("No existe un usuario con id: " + id));
 
         if (role != Role.ADMIN) {
-            if (user.getEmail().equals(parentAdminEmail)) {
+            if (user.getEmail().equals(User.normalizeEmail(parentAdminEmail))) {
                 throw new BusinessRuleException("La cuenta principal no puede perder el rol de administrador");
             }
             if (user.getId().equals(currentUser.getId())) {

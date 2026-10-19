@@ -8,6 +8,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Entity
@@ -70,8 +71,14 @@ public class User implements UserDetails {
         return email;
     }
 
+    // Emails are stored normalized, so Juan@mail.com and juan@mail.com are the same account.
     public void setEmail(String email) {
-        this.email = email;
+        this.email = normalizeEmail(email);
+    }
+
+    // Single criterion for every email comparison: no surrounding spaces and lower case.
+    public static String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
     }
 
     public String getPassword() {

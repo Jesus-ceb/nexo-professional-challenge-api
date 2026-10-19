@@ -54,6 +54,8 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.GET, "/products/**", "/categories/**", "/cities/**", "/features/**").permitAll()
                                 // Any logged-in user can read their own data and resend their confirmation email.
                                 .requestMatchers("/users/me", "/users/me/**").authenticated()
+                                // Any logged-in user can rate and comment a product.
+                                .requestMatchers(HttpMethod.POST, "/products/*/reviews").authenticated()
                                 // Everything else on these resources is administrative: USER gets 403.
                                 .requestMatchers("/users/**", "/products/**", "/categories/**", "/cities/**", "/features/**").hasRole("ADMIN")
                                 .anyRequest().authenticated()

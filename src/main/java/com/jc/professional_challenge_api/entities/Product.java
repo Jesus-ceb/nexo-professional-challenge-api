@@ -45,6 +45,15 @@ public class Product {
             inverseJoinColumns = @JoinColumn(name = "id_feature"))
     private Set<Feature> features = new HashSet<>();
 
+    // Reviews go with the product when it is deleted.
+    @OneToMany(mappedBy = "product", cascade = CascadeType.REMOVE)
+    private List<Review> reviews = new ArrayList<>();
+
+    // Average rating (2 decimals, null with no reviews) and total, updated every time a review is published.
+    private Double averageRating;
+
+    private int reviewCount = 0;
+
     public Long getId() {
         return id;
     }
@@ -107,5 +116,21 @@ public class Product {
 
     public void setFeatures(Set<Feature> features) {
         this.features = features;
+    }
+
+    public Double getAverageRating() {
+        return averageRating;
+    }
+
+    public void setAverageRating(Double averageRating) {
+        this.averageRating = averageRating;
+    }
+
+    public int getReviewCount() {
+        return reviewCount;
+    }
+
+    public void setReviewCount(int reviewCount) {
+        this.reviewCount = reviewCount;
     }
 }

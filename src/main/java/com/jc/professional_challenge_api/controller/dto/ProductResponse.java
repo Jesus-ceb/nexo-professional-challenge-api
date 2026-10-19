@@ -18,7 +18,9 @@ public record ProductResponse(
         City city,
         AddressResponse address,
         List<ImageResponse> images,
-        Set<Feature> features
+        Set<Feature> features,
+        Double averageRating,
+        int reviewCount
 ) {
 
     public record AddressResponse(Long id, String direction) {}
@@ -34,6 +36,7 @@ public record ProductResponse(
                 .toList();
 
         return new ProductResponse(product.getId(), product.getName(), product.getDescription(),
-                product.getCategory(), product.getCity(), address, images, product.getFeatures());
+                product.getCategory(), product.getCity(), address, images, product.getFeatures(),
+                product.getAverageRating(), product.getReviewCount());
     }
 }
